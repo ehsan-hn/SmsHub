@@ -1,0 +1,26 @@
+[tool.ruff]
+# Adjust as preferred
+line-length = 100
+target-version = "py311"
+
+# Lint rules:
+# - E/F: pycodestyle/pyflakes
+# - I: isort (import sorting)
+# - UP: pyupgrade
+# - DJ: Django
+select = ["E", "F", "I", "UP", "DJ"]
+ignore = [
+  # Example ignores; tweak as the project evolves
+  "E501",  # line length (handled by formatter)
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+
+[tool.ruff.isort]
+combine-as-imports = true
+known-first-party = ["sms_hub"]
+split-on-trailing-comma = true
