@@ -28,4 +28,4 @@ def create_deduct_transaction(user: User, amount: int, sms: SMS) -> Transaction:
 
 
 def get_user_balance(user: User) -> int:
-    return Transaction.objects.filter(user=user).aggregate(Sum("amount"))["amount__sum"]
+    return Transaction.objects.filter(user=user).aggregate(Sum("amount"))["amount__sum"] or 0
