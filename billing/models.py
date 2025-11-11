@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.db import models
 
+from sms.models import SMS
+
 User = get_user_model()
 
 
@@ -19,6 +21,14 @@ class Transaction(models.Model):
     )
     amount = models.BigIntegerField(verbose_name="مقدار")
     created_at = models.DateTimeField(verbose_name="زمان ایجاد", auto_now_add=True)
+    sms = models.ForeignKey(
+        SMS,
+        verbose_name="پیامک",
+        related_name="transactions",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         ordering = ["-created_at"]
