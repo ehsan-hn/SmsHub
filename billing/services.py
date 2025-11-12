@@ -34,7 +34,6 @@ def create_transaction(
     transaction_type: str,
     sms: SMS = None,
 ) -> Transaction:
-    """Create a transaction record."""
     if transaction_type == TransactionType.SMS_DEDUCTION:
         amount = -amount
 

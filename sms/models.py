@@ -24,18 +24,20 @@ class SMS(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان ایجاد")
     modified_at = models.DateTimeField(auto_now=True, verbose_name="تاریخ آخرین تغییر")
-    last_attempt_at = models.DateTimeField(verbose_name="تاریخ آخرین تلاش")
+    last_attempt_at = models.DateTimeField(verbose_name="تاریخ آخرین تلاش", null=True, blank=True)
     attempts_num = models.PositiveIntegerField(default=0, verbose_name="تعداد تلاش‌ها")
-    service_error = models.TextField(verbose_name="خطای سرویس")
+    service_error = models.TextField(verbose_name="خطای سرویس", blank=True)
     status = models.CharField(
         max_length=255,
         verbose_name="وضعیت",
         choices=SMSStatus.choices,
         default=SMSStatus.CREATED,
     )
+    sender = models.CharField(max_length=255, verbose_name="شماره فرستنده")
     receiver = models.CharField(max_length=255, verbose_name="شماره گیرنده")
     content = models.TextField(verbose_name="محتوای پیام")
     cost = models.BigIntegerField(verbose_name="هزینه (ریال)")
+    is_express = models.BooleanField(default=False, verbose_name="اکسپرس")
 
     class Meta:
         ordering = ["-created_at"]
