@@ -1,3 +1,8 @@
+[project]
+dependencies = [
+    "django-redis>=5.4.0",
+]
+
 [tool.ruff]
 # Adjust as preferred
 line-length = 100
