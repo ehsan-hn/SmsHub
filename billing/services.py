@@ -34,9 +34,6 @@ def create_transaction(
     transaction_type: str,
     sms: SMS = None,
 ) -> Transaction:
-    if transaction_type == TransactionType.SMS_DEDUCTION:
-        amount = -amount
-
     return Transaction.objects.create(
         user=user,
         amount=amount,
@@ -70,18 +67,25 @@ def create_refund_transaction(user: User, amount: int, sms: SMS) -> Transaction:
 
 
 @transaction.atomic
-def create_deduct_transaction(user: User, amount: int, sms: SMS) -> Transaction:
+def create_deduct_transaction(user: User, amount: int) -> Transaction:
     if amount <= 0:
         raise ValueError("Amount must be positive")
 
     user_to_check = User.objects.select_for_update().get(id=user.id)
     if user_to_check.balance < amount:
         raise InsufficientFundsError("Insufficient funds for this SMS.")
+    user_to_check.balance = F("balance") - amount
+    user_to_check.save(update_fields=["balance"])
+    user_to_check.refresh_from_db(fields=["balance"])
+    tx = create_transaction(user_to_check, -amount, TransactionType.SMS_DEDUCTION)
 
-    user_updated = _update_user_balance(user, -amount)
-    tx = create_transaction(user_updated, amount, TransactionType.SMS_DEDUCTION, sms)
+    transaction.on_commit(lambda: _update_balance_cache(user_to_check.id, user_to_check.balance))
+    return tx
 
-    transaction.on_commit(lambda: _update_balance_cache(user_updated.id, user_updated.balance))
+
+def update_transaction_sms_field(tx: Transaction, sms: SMS) -> Transaction:
+    tx.sms = sms
+    tx.save(update_fields=["sms"])
     return tx
 
 
