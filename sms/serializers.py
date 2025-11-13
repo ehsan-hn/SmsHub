@@ -23,6 +23,15 @@ class SendSMSSerializer(serializers.Serializer):
     is_express = serializers.BooleanField(default=False)
 
 
+class SendSMSResponseSerializer(serializers.Serializer):
+    sms_id = serializers.IntegerField()
+    task_id = serializers.CharField()
+
+
+class ErrorResponseSerializer(serializers.Serializer):
+    error = serializers.CharField()
+
+
 class SMSReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = SMS

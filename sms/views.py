@@ -1,3 +1,4 @@
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.generics import ListAPIView, get_object_or_404
 from rest_framework.response import Response
@@ -7,11 +8,30 @@ from account.models import User
 from billing.exceptions import InsufficientFundsError
 from sms.filters import SMSReportFilterSet
 from sms.models import SMS
-from sms.serializers import SendSMSSerializer, SMSReportSerializer
+from sms.serializers import (
+    ErrorResponseSerializer,
+    SendSMSResponseSerializer,
+    SendSMSSerializer,
+    SMSReportSerializer,
+)
 from sms.services import create_sms_and_deduct_balance, send_sms
 
 
 class SendSMSView(APIView):
+    @extend_schema(
+        request=SendSMSSerializer,
+        responses={
+            200: SendSMSResponseSerializer,
+            400: OpenApiResponse(
+                response=ErrorResponseSerializer, description="Validation or business error"
+            ),
+            404: OpenApiResponse(response=ErrorResponseSerializer, description="User not found"),
+            500: OpenApiResponse(
+                response=ErrorResponseSerializer, description="Unexpected server error"
+            ),
+        },
+        description="Submit an SMS for sending and receive asynchronous task details.",
+    )
     def post(self, request):
         serializer = SendSMSSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -31,10 +51,10 @@ class SendSMSView(APIView):
                 "task_id": task.id,
             }
             return Response(response_payload, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except InsufficientFundsError:
             return Response({"error": "Insufficient funds"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class SMSReportView(ListAPIView):
