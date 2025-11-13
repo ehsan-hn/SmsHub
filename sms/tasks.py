@@ -1,7 +1,16 @@
 from celery import shared_task
+from django.conf import settings
 from django.utils.timezone import now
 
 from sms.models import SMS, SMSStatus
+from sms.services import (
+    deliver_sms,
+    fail_sms,
+    get_magfa_sms_to_check_status,
+    get_sms_by_mid,
+    get_sms_with_over_24_hours_of_sent_status,
+)
+from sms.sms_provider_clients.magfa import MagfaProvider
 from sms.utils import get_client_api
 
 
@@ -74,3 +83,22 @@ def send_express_sms(self, sms_id: int) -> bool:
     sms = SMS.objects.get(pk=sms_id)
     _send_sms_internal(sms)
     return True
+
+
+def check_sent_sms_status_for_magfa():
+    for sms in get_sms_with_over_24_hours_of_sent_status():
+        fail_sms(sms)
+    list_of_sms = get_magfa_sms_to_check_status()
+    for i in range(0, list_of_sms.count(), 100):
+        api = MagfaProvider(settings.MAGFA_USERNAME, settings.MAGFA_PASSWORD, settings.MAGFA_DOMAIN)
+        mids = list(list_of_sms[i : i + 100].values_list("message_id", flat=True))
+        try:
+            response = api.get_statuses(mids)
+            for message_data in response.get("dlrs"):
+                sms = get_sms_by_mid(message_data.get("mid"))
+                if message_data.get("status") == -1:
+                    fail_sms(sms)
+                elif message_data.get("status") in [1, 2]:
+                    deliver_sms(sms)
+        except Exception:
+            pass

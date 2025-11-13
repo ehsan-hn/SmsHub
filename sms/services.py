@@ -1,9 +1,15 @@
+from datetime import timedelta
+
 from django.db import transaction
+from django.utils.timezone import now
 
 from account.models import User
-from billing.services import create_deduct_transaction, update_transaction_sms_field
+from billing.services import (
+    create_deduct_transaction,
+    create_refund_transaction,
+    update_transaction_sms_field,
+)
 from sms.models import SMS, SMSStatus
-from sms.tasks import send_express_sms, send_normal_sms
 
 
 def _calculate_sms_cost(content: str, sender: str, receiver: str, is_express: bool) -> int:
@@ -49,6 +55,8 @@ def create_sms_and_deduct_balance(user, content, receiver, is_express=False) -> 
 
 
 def send_sms(sms: SMS, forced: bool = False):
+    from sms.tasks import send_express_sms, send_normal_sms
+
     if not forced and sms.status not in [SMSStatus.CREATED, SMSStatus.FAILED]:
         raise Exception(f"SMS status {sms.status} already added to queue")
     sms.status = SMSStatus.IN_QUEUE
@@ -56,3 +64,32 @@ def send_sms(sms: SMS, forced: bool = False):
     if sms.is_express:
         return send_express_sms.delay(sms.id)
     return send_normal_sms.delay(sms.id)
+
+
+def get_magfa_sms_to_check_status():
+    cut_off = now() - timedelta(hours=24)
+    return SMS.objects.filter(
+        status=SMSStatus.SENT, created_at__gte=cut_off, sender__startswith="3000"
+    )
+
+
+def get_sms_with_over_24_hours_of_sent_status():
+    cut_off = now() - timedelta(hours=24)
+    return SMS.objects.filter(status=SMSStatus.FAILED, created_at__gte=cut_off).update(
+        status=SMSStatus.FAILED, modified_at=now()
+    )
+
+
+def fail_sms(sms: SMS):
+    sms.status = SMSStatus.FAILED
+    sms.save(update_fields=["status", "modified_at"])
+    create_refund_transaction(sms.user, sms.cost, sms)
+
+
+def deliver_sms(sms: SMS):
+    sms.status = SMSStatus.DELIVERED
+    sms.save(update_fields=["status", "modified_at"])
+
+
+def get_sms_by_mid(mid: int):
+    return SMS.objects.get(mid=mid)
