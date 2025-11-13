@@ -6,10 +6,10 @@ class SendSMSSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
     receiver = serializers.RegexField(
         label=_("Receiver Phone Number"),
-        regex=r"^\?\d{9,15}$",
-        max_length=20,
+        regex=r"^\d{9,15}$",
+        max_length=15,
         error_messages={
-            "invalid": _("Invalid phone number format. Must be a valid number, e.g., 98912345678.")
+            "invalid": _("Invalid phone number format. Must contain only digits (9 to 15 digits).")
         },
     )
     content = serializers.CharField(

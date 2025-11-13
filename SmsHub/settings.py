@@ -10,7 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from kombu import Exchange, Queue
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -137,4 +140,61 @@ CACHES = {
         "KEY_PREFIX": "smshub",
         "TIMEOUT": 300,  # Default timeout in seconds (5 minutes)
     }
+}
+
+
+RABBITMQ_USER = os.environ.get("RABBITMQ_USER", "guest")
+RABBITMQ_PASSWORD = os.environ.get("RABBITMQ_PASSWORD", "guest")
+RABBITMQ_HOST = os.environ.get("RABBITMQ_HOST", "localhost")
+RABBITMQ_PORT = os.environ.get("RABBITMQ_PORT", "5672")
+RABBITMQ_VHOST = os.environ.get("RABBITMQ_VHOST", "/")
+
+CELERY_BROKER_URL = (
+    f"amqp://{RABBITMQ_USER}:{RABBITMQ_PASSWORD}@{RABBITMQ_HOST}:{RABBITMQ_PORT}/{RABBITMQ_VHOST}"
+)
+CELERY_RESULT_BACKEND = None
+CELERY_RESULT_EXPIRES = 0
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "Asia/Tehran"
+CELERY_ENABLE_UTC = True
+
+CELERY_BROKER_CONNECTION_RETRY = True
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 4
+CELERY_ACKS_LATE = True
+CELERY_TASK_ACKS_ON_FAILURE_OR_TIMEOUT = True
+
+standard_exchange = Exchange("standard_sms_sender", type="direct")
+express_exchange = Exchange("express_sms_sender", type="direct")
+
+CELERY_TASK_QUEUES = (
+    Queue(
+        "standard_sms_sender",
+        exchange=standard_exchange,
+        routing_key="standard_sms_sender",
+        durable=True,
+    ),
+    Queue(
+        "express_sms_sender",
+        exchange=express_exchange,
+        routing_key="express_sms_sender",
+        durable=True,
+    ),
+)
+
+CELERY_TASK_DEFAULT_QUEUE = "standard_sms_sender"
+CELERY_TASK_DEFAULT_EXCHANGE = "standard_sms_sender"
+CELERY_TASK_DEFAULT_ROUTING_KEY = "standard_sms_sender"
+CELERY_TASK_DEFAULT_EXCHANGE_TYPE = "direct"
+
+CELERY_TASK_ROUTES = {
+    "sms.tasks.send_normal_sms": {"queue": "standard_sms_sender"},
+    "sms.tasks.send_express_sms": {"queue": "express_sms_sender"},
+}
+
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    "confirm_publish": True,
+    "max_retries": 3,
 }
