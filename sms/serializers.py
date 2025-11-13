@@ -1,6 +1,8 @@
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
+from sms.models import SMS
+
 
 class SendSMSSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
@@ -19,3 +21,20 @@ class SendSMSSerializer(serializers.Serializer):
         style={"base_template": "textarea.html"},
     )
     is_express = serializers.BooleanField(default=False)
+
+
+class SMSReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SMS
+        fields = [
+            "id",
+            "message_id",
+            "receiver",
+            "sender",
+            "status",
+            "content",
+            "cost",
+            "is_express",
+            "created_at",
+            "modified_at",
+        ]

@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "account",
     "sms",
     "billing",
+    "django_filters",
 ]
 
 AUTH_USER_MODEL = "account.User"
@@ -198,3 +199,15 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {
     "confirm_publish": True,
     "max_retries": 3,
 }
+
+
+REST_FRAMEWORK = {
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 25,
+    "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
+}
+
+
+MAGFA_USERNAME = os.environ.get("MAGFA_USERNAME")
+MAGFA_PASSWORD = os.environ.get("MAGFA_PASSWORD")
+MAGFA_DOMAIN = os.environ.get("MAGFA_DOMAIN")

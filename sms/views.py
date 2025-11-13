@@ -1,11 +1,13 @@
 from rest_framework import status
-from rest_framework.generics import get_object_or_404
+from rest_framework.generics import ListAPIView, get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from account.models import User
 from billing.exceptions import InsufficientFundsError
-from sms.serializers import SendSMSSerializer
+from sms.filters import SMSReportFilterSet
+from sms.models import SMS
+from sms.serializers import SendSMSSerializer, SMSReportSerializer
 from sms.services import create_sms_and_deduct_balance, send_sms
 
 
@@ -33,3 +35,9 @@ class SendSMSView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except InsufficientFundsError:
             return Response({"error": "Insufficient funds"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class SMSReportView(ListAPIView):
+    serializer_class = SMSReportSerializer
+    queryset = SMS.objects.all()
+    filterset_class = SMSReportFilterSet

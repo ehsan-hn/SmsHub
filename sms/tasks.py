@@ -2,7 +2,7 @@ from celery import shared_task
 from django.utils.timezone import now
 
 from sms.models import SMS, SMSStatus
-from sms.sms_provider_clients import get_client_api
+from sms.utils import get_client_api
 
 
 def _send_sms_internal(sms: SMS) -> None:
