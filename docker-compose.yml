@@ -1,0 +1,96 @@
+services:
+
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    env_file: .env
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  backend:
+    build: .
+    container_name: sms_hub
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn SmsHub.wsgi:application --bind 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+      - rabbitmq
+
+  flower:
+    build: .
+    container_name: celery_flower
+    env_file: .env
+    command: >
+      celery -A SmsHub flower
+      --broker=${CELERY_BROKER_URL}
+      --port=5555
+      --basic_auth=${FLOWER_USER}:${FLOWER_PASSWORD}
+    ports:
+      - "5555:5555"
+    volumes:
+      - .:/app
+    depends_on:
+      - rabbitmq
+    restart: always
+
+  celery_worker_standard_sms_sender:
+    build: .
+    container_name: celery_worker_standard_sms_sender
+    env_file: .env
+    command: celery -A worker -l info -Q standard_sms_sender
+    volumes:
+      - .:/app
+    depends_on:
+      - backend
+      - rabbitmq
+    restart: always
+
+  celery_worker_express_sms_sender:
+    build: .
+    container_name: celery_worker_express_sms_sender
+    env_file: .env
+    command: celery -A worker -l info -Q express_sms_sender
+    volumes:
+      - .:/app
+    depends_on:
+      - backend
+      - rabbitmq
+    restart: always
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  static_volume:
