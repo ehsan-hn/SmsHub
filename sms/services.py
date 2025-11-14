@@ -92,4 +92,4 @@ def deliver_sms(sms: SMS):
 
 
 def get_sms_by_mid(mid: int):
-    return SMS.objects.get(mid=mid)
+    return SMS.objects.get(message_id=mid)
